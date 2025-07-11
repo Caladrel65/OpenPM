@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  openpm:
+    build: .
+    container_name: openpm
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    environment:
+      - LLM_ENDPOINT=http://localhost:8000/llm
+      - SCHEDULE=24h
