@@ -39,6 +39,10 @@ type LLMResponse struct {
 	} `json:"choices"`
 }
 
+type DiscordWebhook struct {
+	Content string `json:"content"`
+}
+
 func callLLM(endpoint, model string, messages []ChatMessage) (string, string, error) {
 	reqBody := ChatRequest{
 		Model:       model,
@@ -115,6 +119,23 @@ func saveHistory(history []ChatMessage) error {
 	return os.WriteFile(historyFile, data, 0644)
 }
 
+func sendToDiscord(webhookURL, message string) error {
+	data, err := json.Marshal(DiscordWebhook{Content: message})
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("discord webhook failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
 func main() {
 	fmt.Println("Starting!")
 
@@ -151,6 +172,13 @@ func main() {
 	}
 
 	fmt.Println("PM Message:", pmResponse)
+
+	webhookURL := "https://discord.com/api/webhooks/1395642699738255391/eHv1tXIhl7mw4MSaWuniqwi3UC7o6uRxltfcGbB89Au3nPog-HuGmBrInAyLLUjwLtaB"
+	fmt.Println("Sending message to Discord...")
+	if err := sendToDiscord(webhookURL, pmResponse); err != nil {
+		fmt.Println("Error sending to Discord:", err)
+		// Do not exit here, we still want to save the history
+	}
 
 	history = append(history, userMessage, ChatMessage{Role: "assistant", Content: pmResponse})
 	if err := saveHistory(history); err != nil {
