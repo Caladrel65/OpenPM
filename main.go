@@ -174,8 +174,9 @@ func main() {
 	fmt.Println("PM Message:", pmResponse)
 
 	webhookURL := "https://discord.com/api/webhooks/1395642699738255391/eHv1tXIhl7mw4MSaWuniqwi3UC7o6uRxltfcGbB89Au3nPog-HuGmBrInAyLLUjwLtaB"
+	discordMessage := fmt.Sprintf("<@119165799284867072> %s", pmResponse)
 	fmt.Println("Sending message to Discord...")
-	if err := sendToDiscord(webhookURL, pmResponse); err != nil {
+	if err := sendToDiscord(webhookURL, discordMessage); err != nil {
 		fmt.Println("Error sending to Discord:", err)
 		// Do not exit here, we still want to save the history
 	}
