@@ -10,7 +10,12 @@ import (
 	"os/exec"
 )
 
-// ...existing code...
+const (
+	llmEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
+	modelID     = "gemma-3-12b-it-qat"
+	historyFile = "conversation_history.json"
+	maxHistory  = 10 // Keep the last 10 messages (5 pairs)
+)
 
 type ChatMessage struct {
 	Role    string `json:"role"`
@@ -34,13 +39,10 @@ type LLMResponse struct {
 	} `json:"choices"`
 }
 
-func callLLM(endpoint, model, userPrompt string) (string, string, error) {
+func callLLM(endpoint, model string, messages []ChatMessage) (string, string, error) {
 	reqBody := ChatRequest{
-		Model: model,
-		Messages: []ChatMessage{
-			{Role: "system", Content: "You are a project manager for a small software team. Your job is to check in with the developer, ask for status updates on their current tasks, and offer helpful direction if needed. Always be encouraging and concise."},
-			{Role: "user", Content: userPrompt},
-		},
+		Model:       model,
+		Messages:    messages,
 		Temperature: 0.7,
 		MaxTokens:   -1,
 		Stream:      false,
@@ -66,10 +68,8 @@ func callLLM(endpoint, model, userPrompt string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	// Save raw response for debugging
 	rawResponse := string(body)
 
-	// Parse message content
 	var llmResp LLMResponse
 	err = json.Unmarshal(body, &llmResp)
 	if err != nil || len(llmResp.Choices) == 0 {
@@ -90,13 +90,39 @@ func getLatestCommits() (string, error) {
 	return out.String(), nil
 }
 
-const (
-	llmEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
-	modelID     = "gemma-3-12b-it-qat"
-)
+func loadHistory() ([]ChatMessage, error) {
+	if _, err := os.Stat(historyFile);
+		os.IsNotExist(err) {
+		return []ChatMessage{}, nil
+	}
+	file, err := os.ReadFile(historyFile)
+	if err != nil {
+		return nil, err
+	}
+	var history []ChatMessage
+	err = json.Unmarshal(file, &history)
+	return history, err
+}
+
+func saveHistory(history []ChatMessage) error {
+	if len(history) > maxHistory {
+		history = history[len(history)-maxHistory:]
+	}
+	data, err := json.MarshalIndent(history, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(historyFile, data, 0644)
+}
 
 func main() {
 	fmt.Println("Starting!")
+
+	history, err := loadHistory()
+	if err != nil {
+		fmt.Println("Error loading history:", err)
+		os.Exit(1)
+	}
 
 	fmt.Println("Fetching latest commits...")
 	commits, err := getLatestCommits()
@@ -105,15 +131,32 @@ func main() {
 		os.Exit(1)
 	}
 
+	userMessage := ChatMessage{
+		Role:    "user",
+		Content: fmt.Sprintf("Here are the 5 latest commits for the project:\n\n%s\n\nBased on these, and our previous conversation, what should I focus on next?", commits),
+	}
+
+	messages := []ChatMessage{
+		{Role: "system", Content: "You are a project manager for a small software team. Your job is to check in with the developer, ask for status updates on their current tasks, and offer helpful direction if needed. Always be encouraging and concise."},
+	}
+	messages = append(messages, history...)
+	messages = append(messages, userMessage)
+
 	fmt.Println("Calling LLM at:", llmEndpoint)
-	userPrompt := fmt.Sprintf("Here are the 5 latest commits for the project:\n\n%s\n\nBased on these, what should I focus on next?", commits)
-	message, rawResponse, err := callLLM(llmEndpoint, modelID, userPrompt)
+	pmResponse, rawResponse, err := callLLM(llmEndpoint, modelID, messages)
 	if err != nil {
 		fmt.Println("Error calling LLM:", err)
 		fmt.Println("Raw response:", rawResponse)
 		os.Exit(1)
 	}
-	fmt.Println("PM Message:", message)
-	// For debugging, you can also print the full response if needed
-	// fmt.Println("LLM Raw Response:", rawResponse)
+
+	fmt.Println("PM Message:", pmResponse)
+
+	history = append(history, userMessage, ChatMessage{Role: "assistant", Content: pmResponse})
+	if err := saveHistory(history); err != nil {
+		fmt.Println("Error saving history:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Conversation history saved.")
 }

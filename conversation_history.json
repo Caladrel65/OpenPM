@@ -1,0 +1,18 @@
+[
+  {
+    "role": "user",
+    "content": "Here are the 5 latest commits for the project:\n\nc890af1 - Joshua Francis, 74 seconds ago : Used gemini cli to add latest commits to LLM request instead of static message.\neb2cfb5 - Joshua Francis, 5 days ago : Removed docker from the equation for now, put PM stuff back in.\na6d58b0 - Joshua Francis, 7 days ago : wrote readme and vibe coded a little lol\nb3d6894 - Caladrel, 7 days ago : Initial commit\n\nBased on these, and our previous conversation, what should I focus on next?"
+  },
+  {
+    "role": "assistant",
+    "content": "Okay, great! Based on the recent commits – especially Joshua's work with the Gemini CLI and putting PM stuff back in – it looks like he’s making good progress integrating LLM functionality and reverting some earlier changes.\n\n**I think the best thing to do now is focus on understanding the current state of the LLM integration.** Can you give me a quick rundown of where things stand with that, Joshua? Are we closer to testing?"
+  },
+  {
+    "role": "user",
+    "content": "Here are the 5 latest commits for the project:\n\nc890af1 - Joshua Francis, 2 minutes ago : Used gemini cli to add latest commits to LLM request instead of static message.\neb2cfb5 - Joshua Francis, 5 days ago : Removed docker from the equation for now, put PM stuff back in.\na6d58b0 - Joshua Francis, 7 days ago : wrote readme and vibe coded a little lol\nb3d6894 - Caladrel, 7 days ago : Initial commit\n\nBased on these, and our previous conversation, what should I focus on next?"
+  },
+  {
+    "role": "assistant",
+    "content": "Okay, good to see activity! Joshua's latest commit shows he’s refining the LLM request with actual project data.\n\n**Let's check in on how that Gemini CLI integration is progressing.** Could you give me a quick update – are you seeing the expected responses and behavior now?"
+  }
+]
