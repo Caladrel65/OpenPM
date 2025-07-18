@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 )
 
 // ...existing code...
@@ -78,6 +79,17 @@ func callLLM(endpoint, model, userPrompt string) (string, string, error) {
 	return messageContent, rawResponse, nil
 }
 
+func getLatestCommits() (string, error) {
+	cmd := exec.Command("git", "log", "-n", "5", "--pretty=format:%h - %an, %ar : %s")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
 const (
 	llmEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
 	modelID     = "gemma-3-12b-it-qat"
@@ -85,8 +97,16 @@ const (
 
 func main() {
 	fmt.Println("Starting!")
+
+	fmt.Println("Fetching latest commits...")
+	commits, err := getLatestCommits()
+	if err != nil {
+		fmt.Println("Error fetching commits:", err)
+		os.Exit(1)
+	}
+
 	fmt.Println("Calling LLM at:", llmEndpoint)
-	userPrompt := "Here is my daily status update: [replace with your actual update]. What should I focus on next?" + "For now, I'm using a placeholder for the update, which will actually include RAG details from the github repo. Please provide a dummy response as though I gave information about e.g. issues, code, commits, etc!"
+	userPrompt := fmt.Sprintf("Here are the 5 latest commits for the project:\n\n%s\n\nBased on these, what should I focus on next?", commits)
 	message, rawResponse, err := callLLM(llmEndpoint, modelID, userPrompt)
 	if err != nil {
 		fmt.Println("Error calling LLM:", err)
