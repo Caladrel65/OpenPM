@@ -2,12 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
+	"strings"
+	"time"
+
+	"golang.org/x/oauth2"
+
+	"github.com/google/go-github/v63/github"
 )
 
 const (
@@ -83,15 +89,54 @@ func callLLM(endpoint, model string, messages []ChatMessage) (string, string, er
 	return messageContent, rawResponse, nil
 }
 
-func getLatestCommits() (string, error) {
-	cmd := exec.Command("git", "log", "-n", "5", "--pretty=format:%h - %an, %ar : %s")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
+
+
+func getProjectStatus() (string, error) {
+	content, err := os.ReadFile("PROJECT_STATUS.md")
+	if err != nil {
+		// If the file doesn't exist, return an empty string
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return string(content), nil
+}
+
+func getGitHubIssues() (string, error) {
+	token := os.Getenv("GITHUB_TOKEN")
+	owner := os.Getenv("GITHUB_OWNER")
+	repo := os.Getenv("GITHUB_REPO")
+
+	if token == "" || owner == "" || repo == "" {
+		return "(GitHub issues not configured)", nil
+	}
+
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	client := github.NewClient(tc)
+
+	issues, _, err := client.Issues.ListByRepo(ctx, owner, repo, &github.IssueListByRepoOptions{
+		State: "open",
+	})
 	if err != nil {
 		return "", err
 	}
-	return out.String(), nil
+
+	if len(issues) == 0 {
+		return "No open issues found.", nil
+	}
+
+	var issueList string
+	for _, issue := range issues {
+		issueList += fmt.Sprintf("- #%d: %s\n", issue.GetNumber(), issue.GetTitle())
+	}
+
+	return issueList, nil
 }
 
 func loadHistory() ([]ChatMessage, error) {
@@ -119,6 +164,8 @@ func saveHistory(history []ChatMessage) error {
 	return os.WriteFile(historyFile, data, 0644)
 }
 
+
+
 func sendToDiscord(webhookURL, message string) error {
 	data, err := json.Marshal(DiscordWebhook{Content: message})
 	if err != nil {
@@ -145,20 +192,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Fetching latest commits...")
-	commits, err := getLatestCommits()
+	
+
+	projectStatus, err := getProjectStatus()
 	if err != nil {
-		fmt.Println("Error fetching commits:", err)
+		fmt.Println("Error fetching project status:", err)
+		os.Exit(1)
+	}
+
+	issues, err := getGitHubIssues()
+	if err != nil {
+		fmt.Println("Error fetching GitHub issues:", err)
 		os.Exit(1)
 	}
 
 	userMessage := ChatMessage{
 		Role:    "user",
-		Content: fmt.Sprintf("Here are the 5 latest commits for the project:\n\n%s\n\nBased on these, and our previous conversation, what should I focus on next?", commits),
+		Content: fmt.Sprintf(`Today is %s. Here is the current project status:
+
+%s
+
+Here are the open GitHub issues:
+
+%s`, time.Now().Format("Monday, January 2, 2006"), projectStatus, issues),
 	}
 
 	messages := []ChatMessage{
-		{Role: "system", Content: "You are a project manager for a small software team. Your job is to check in with the developer, ask for status updates on their current tasks, and offer helpful direction if needed. Always be encouraging and concise."},
+		{Role: "system", Content: "You are a friendly project manager AI. You are talking directly to a solo hobbyist developer. Your role is to check in on their progress, understand that they have limited time, and provide encouragement. Address the developer directly. Keep your messages concise, supportive, and focused on helping them take the next small step. If the user's message doesn't mention GitHub issues, check the conversation history. If GitHub integration hasn't been discussed recently, gently suggest connecting to GitHub for better project management."},
 	}
 	messages = append(messages, history...)
 	messages = append(messages, userMessage)
