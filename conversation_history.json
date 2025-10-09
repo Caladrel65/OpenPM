@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "Today is Wednesday, July 23, 2025. Here is the current project status:\n\n# Project Status\n\n## Completed Tasks\n- Webhook functionality is fully tested and working.\n\n\nHere are the open GitHub issues:\n\n(GitHub issues not configured)\n\n(By the way, you can connect this tool to your GitHub repository to get even better project management suggestions. Ask me how!)"
+  },
+  {
+    "role": "assistant",
+    "content": "Hey there! 👋 Just checking in on your progress today, Wednesday, July 23rd.\n\nGreat news about getting that webhook functionality fully tested and working – fantastic job! 🎉\n\nSince we don't have any open GitHub issues listed right now, is there a small area you could focus on for just 30-60 minutes? Even something like refactoring or planning the next feature would be awesome. No pressure at all - just thought I’d offer! 😊"
+  }
+]
